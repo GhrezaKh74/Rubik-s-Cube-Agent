@@ -57,6 +57,21 @@
   #log div b { color: var(--text); font-weight: 600; }
   #msg { margin-top: 8px; font-size: 13px; min-height: 1.2em; }
   #msg.bad { color: var(--bad); } #msg.ok { color: var(--accent); }
+  /* scanner */
+  #scanner { display: none; }
+  #scanner.open { display: block; }
+  .scanHow { font-size: 13px; line-height: 1.8; margin-bottom: 8px; }
+  .scanView { position: relative; width: 100%; max-width: 360px; aspect-ratio: 1; margin: 0 auto; border-radius: 12px; overflow: hidden; background: #000; }
+  .scanView video, .scanView img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .scanGrid { position: absolute; inset: 12.5%; display: grid; grid-template-columns: repeat(3, 1fr); pointer-events: none; }
+  .scanGrid i { border: 2px solid rgba(255,255,255,.85); box-shadow: 0 0 0 1px rgba(0,0,0,.5); }
+  .scanNote { position: absolute; left: 8px; right: 8px; bottom: 8px; text-align: center; font-size: 12px; color: #fff; text-shadow: 0 1px 2px #000; }
+  .scanLive, .scanDone { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+  .scanLive { display: grid; grid-template-columns: repeat(3, 22px); justify-content: center; direction: ltr; }
+  .scanLive span { width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--line); }
+  .scanDone span { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--panel2); color: var(--muted); border: 1px solid var(--line); }
+  .scanDone span.ok { color: var(--accent); border-color: var(--accent); }
+  .filebtn { border: 1px solid var(--line); background: var(--panel2); color: var(--text); border-radius: 10px; padding: 9px 14px; cursor: pointer; }
   /* colour editor */
   #editor { display: none; }
   #editor.open { display: block; }
@@ -109,12 +124,35 @@
       <button id="bStep">گام بعد</button>
       <button id="bScramble">🔀 مکعب جدید</button>
       <button id="bEdit">🎨 مکعب خودم</button>
+      <button id="bScan">📷 اسکن با دوربین</button>
     </div>
     <div class="controls">
       <label class="speed">سرعت <input type="range" id="speed" min="1" max="10" value="6"></label>
       <button id="bReset">بازنشانی</button>
     </div>
     <div id="msg"></div>
+  </section>
+
+  <section class="card" id="scanner">
+    <div class="label">📷 اسکن رنگ‌ها — وجه <b id="scanStep">۱</b> از ۶</div>
+    <div class="scanHow" id="scanHow"></div>
+    <div class="scanView" id="scanView">
+      <video id="scanVideo" playsinline muted autoplay></video>
+      <img id="scanImg" alt="عکس وجه مکعب" hidden>
+      <div class="scanGrid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="scanNote" id="scanNote"></div>
+    </div>
+    <div class="scanLive" id="scanLive"></div>
+    <div class="scanDone" id="scanDone"></div>
+    <div class="controls">
+      <button class="primary" id="bShot">📸 ثبت این وجه</button>
+      <label class="filebtn" for="scanFile">🖼 عکس گرفتن / انتخاب عکس</label>
+      <input type="file" id="scanFile" accept="image/*" capture="environment" hidden>
+      <button id="bScanBack">وجه قبلی</button>
+      <button id="bScanClose">لغو</button>
+    </div>
+    <div class="hint">وجه را صاف جلوی دوربین بگیرید تا ۹ خانه در شبکه قرار بگیرند. نور یکنواخت (بدون انعکاس شدید) بهترین نتیجه را می‌دهد.
+      بعد از ۶ وجه، رنگ‌ها در جدول «مکعب خودم» نمایش داده می‌شوند تا اگر خانه‌ای اشتباه بود، با یک ضربه درستش کنید.</div>
   </section>
 
   <section class="card" id="editor">
@@ -151,6 +189,7 @@
 <script src="policy.js"></script>
 <script src="model.js"></script>
 <script src="model_data.js"></script>
+<script src="scan.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

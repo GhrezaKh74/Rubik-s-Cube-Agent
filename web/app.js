@@ -190,7 +190,7 @@ function finish() {
 
 function setBusy(b) {
   busy = b;
-  ['bStep', 'bScramble', 'bEdit', 'bReset'].forEach(id => { $(id).disabled = b; });
+  ['bStep', 'bScramble', 'bEdit', 'bScan', 'bReset'].forEach(id => { $(id).disabled = b; });
   document.querySelectorAll('#moves button').forEach(x => { x.disabled = b; });
 }
 async function play() {
@@ -309,3 +309,105 @@ $('bApply').onclick = () => {
 paint();
 resize();
 requestAnimationFrame(loop);
+
+// ---------------- camera scanner ----------------
+const scan = { step: 0, samples: {}, stream: null, timer: null };
+function scanShow() {
+  const o = Scan.ORDER[scan.step];
+  $('scanStep').textContent = fa(scan.step + 1);
+  $('scanHow').innerHTML = '';
+  const b = document.createElement('b');
+  b.textContent = 'وجه ' + o.fa + ': ';
+  $('scanHow').append(b, o.how + '.');
+  $('scanDone').innerHTML = '';
+  Scan.ORDER.forEach((x, i) => {
+    const sp = document.createElement('span');
+    sp.textContent = x.fa + (scan.samples[x.face] ? ' ✓' : '');
+    if (scan.samples[x.face]) sp.className = 'ok';
+    $('scanDone').appendChild(sp);
+  });
+  $('bScanBack').disabled = scan.step === 0;
+  $('scanImg').hidden = true;
+  $('scanVideo').hidden = !scan.stream;
+}
+function liveSwatches(cols) {
+  const box = $('scanLive');
+  box.innerHTML = '';
+  cols.forEach(c => {
+    const sp = document.createElement('span');
+    sp.style.background = `rgb(${c.map(Math.round).join(',')})`;
+    box.appendChild(sp);
+  });
+}
+async function scanOpen() {
+  if (busy) return;
+  scan.step = 0; scan.samples = {};
+  $('editor').classList.remove('open');
+  $('scanner').classList.add('open');
+  $('scanner').scrollIntoView({ behavior: 'smooth' });
+  $('scanNote').textContent = 'در حال روشن کردن دوربین…';
+  scanShow();
+  try {
+    scan.stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false,
+    });
+    const v = $('scanVideo');
+    v.srcObject = scan.stream;
+    await v.play().catch(() => {});
+    $('scanNote').textContent = 'وجه را داخل شبکه بگیرید';
+    $('bShot').disabled = false;
+    scan.timer = setInterval(() => {
+      if (v.videoWidth) liveSwatches(Scan.sample(v, v.videoWidth, v.videoHeight));
+    }, 250);
+  } catch (e) {
+    scan.stream = null;
+    $('bShot').disabled = true;
+    $('scanVideo').hidden = true;
+    $('scanNote').textContent = 'دوربین زنده در دسترس نیست؛ با دکمه «عکس گرفتن» از هر وجه یک عکس بگیرید.';
+  }
+  scanShow();
+}
+function scanStop() {
+  clearInterval(scan.timer); scan.timer = null;
+  if (scan.stream) scan.stream.getTracks().forEach(t => t.stop());
+  scan.stream = null;
+  $('scanner').classList.remove('open');
+}
+function scanStore(cols) {
+  scan.samples[Scan.ORDER[scan.step].face] = cols;
+  liveSwatches(cols);
+  if (scan.step < 5) { scan.step++; scanShow(); return; }
+  // all six faces: classify and hand over to the editor for corrections
+  const result = Scan.classify(scan.samples);
+  scanStop();
+  edit = result;
+  buildPalette(); buildNet();
+  $('editor').classList.add('open');
+  $('editor').scrollIntoView({ behavior: 'smooth' });
+  const err = Cube.validate(edit);
+  setMsg(err
+    ? 'اسکن تمام شد، اما حالت هنوز معتبر نیست: ' + err + ' خانه‌های اشتباه را در جدول درست کنید و «اعمال و حل» را بزنید.'
+    : 'اسکن تمام شد و حالت معتبر است. اگر همه خانه‌ها درست‌اند «اعمال و حل» را بزنید.', err ? 'bad' : 'ok');
+}
+$('bScan').onclick = scanOpen;
+$('bScanClose').onclick = scanStop;
+$('bScanBack').onclick = () => { if (scan.step > 0) { scan.step--; scanShow(); } };
+$('bShot').onclick = () => {
+  const v = $('scanVideo');
+  if (!scan.stream || !v.videoWidth) return;
+  scanStore(Scan.sample(v, v.videoWidth, v.videoHeight));
+};
+$('scanFile').onchange = e => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const img = $('scanImg');
+  const url = URL.createObjectURL(file);
+  img.onload = () => {
+    img.hidden = false; $('scanVideo').hidden = true;
+    const cols = Scan.sample(img, img.naturalWidth, img.naturalHeight);
+    URL.revokeObjectURL(url);
+    scanStore(cols);
+  };
+  img.src = url;
+};
