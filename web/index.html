@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>مکعب روبیک هوشمند</title>
+<style>
+  :root {
+    --bg: #0b1020; --panel: #121a30; --panel2: #18223d; --line: #26324f;
+    --text: #e6ebf5; --muted: #8b97b3; --accent: #2dd4bf; --accent2: #60a5fa; --warn: #f59e0b; --bad: #f87171;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: Vazirmatn, "Noto Sans Arabic", Tahoma, sans-serif; font-size: 15px; }
+  header { padding: 12px 16px 6px; text-align: center; }
+  header h1 { margin: 0; font-size: 17px; font-weight: 700; }
+  header h1 b { color: var(--accent); }
+  .chips { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+  .chip { background: var(--panel2); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 12px; color: var(--muted); }
+  .chip b { color: var(--text); font-weight: 600; }
+  main { max-width: 980px; margin: 0 auto; padding: 8px 12px 24px; display: grid; gap: 12px; }
+  @media (min-width: 820px) { main { grid-template-columns: 1fr 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px; min-width: 0; }
+  #view { position: relative; height: 340px; padding: 0; overflow: hidden;
+    background: radial-gradient(ellipse at center, #1b2547 0%, #0b1020 75%); }
+  #view canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #viewHint { position: absolute; bottom: 6px; left: 0; right: 0; text-align: center; font-size: 11px; color: var(--muted); pointer-events: none; }
+  #stageBadge { position: absolute; top: 10px; right: 10px; background: rgba(18,26,48,.85); border: 1px solid var(--line);
+    padding: 3px 10px; border-radius: 999px; font-size: 12px; }
+  .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  #sentence { background: var(--panel2); border-radius: 10px; padding: 10px; line-height: 1.9; min-height: 72px; font-size: 13.5px; }
+  #choice { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  #choiceName { color: var(--accent); font-weight: 700; font-size: 16px; }
+  #choiceAlg { direction: ltr; font-family: ui-monospace, Menlo, monospace; background: var(--panel2); padding: 2px 8px; border-radius: 6px; font-size: 13px; }
+  #choiceP { color: var(--muted); font-size: 12px; }
+  .bars { margin-top: 10px; display: grid; gap: 4px; }
+  .bar { display: grid; grid-template-columns: 9.5em 1fr 3.2em; align-items: center; gap: 6px; font-size: 12px; }
+  .bar .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+  .bar .track { height: 8px; background: var(--panel2); border-radius: 4px; overflow: hidden; }
+  .bar .fill { height: 100%; background: var(--accent2); border-radius: 4px; }
+  .bar.top .fill { background: var(--accent); } .bar.top .name { color: var(--text); }
+  .bar .pv { text-align: left; direction: ltr; color: var(--muted); }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .tile { background: var(--panel2); border-radius: 10px; padding: 8px 4px; text-align: center; }
+  .tile b { display: block; font-size: 18px; } .tile span { font-size: 11px; color: var(--muted); }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+  button { font: inherit; border: 1px solid var(--line); background: var(--panel2); color: var(--text);
+    border-radius: 10px; padding: 9px 14px; cursor: pointer; }
+  button.primary { background: var(--accent); color: #062421; border-color: transparent; font-weight: 700; }
+  button:disabled { opacity: .45; }
+  .speed { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); flex: 1; min-width: 150px; }
+  .speed input { flex: 1; accent-color: var(--accent); }
+  .moves { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 8px; direction: ltr; }
+  .moves button { padding: 8px 0; font-family: ui-monospace, Menlo, monospace; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  #log { direction: rtl; max-height: 160px; overflow: auto; font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.8; }
+  #log div b { color: var(--text); font-weight: 600; }
+  #msg { margin-top: 8px; font-size: 13px; min-height: 1.2em; }
+  #msg.bad { color: var(--bad); } #msg.ok { color: var(--accent); }
+  /* colour editor */
+  #editor { display: none; }
+  #editor.open { display: block; }
+  .net { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2px; direction: ltr; max-width: 420px; margin: 8px auto; }
+  .net .cell { aspect-ratio: 1; border-radius: 3px; border: 1px solid rgba(0,0,0,.5); }
+  .net .cell.center { outline: 2px solid rgba(255,255,255,.35); outline-offset: -3px; }
+  .net .empty { aspect-ratio: 1; }
+  .palette { display: flex; gap: 8px; justify-content: center; margin: 8px 0; }
+  .palette .sw { width: 36px; height: 36px; border-radius: 8px; border: 2px solid transparent; cursor: pointer; }
+  .palette .sw.sel { border-color: #fff; transform: scale(1.1); }
+  .hint { font-size: 12px; color: var(--muted); line-height: 1.8; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🧩 مکعب روبیک — مدل <b id="kb">…</b> کیلوبایتی کل مکعب را حل می‌کند</h1>
+  <div class="chips">
+    <span class="chip">دقت روی حالت‌های ندیده: <b id="sAcc">…</b></span>
+    <span class="chip">جمله‌های آموزشی: <b id="sSent">…</b></span>
+    <span class="chip">برچسب حرکت: <b id="sLab">…</b></span>
+    <span class="chip">بدون شبکه عصبی و بدون اینترنت</span>
+  </div>
+</header>
+<main>
+  <section class="card" id="view">
+    <div id="stageBadge">آماده</div>
+    <div id="viewHint">برای چرخاندن مکعب انگشت بکشید</div>
+  </section>
+
+  <section class="card">
+    <div class="label">جمله‌ای که مدل می‌خواند</div>
+    <div id="sentence">مکعب حل شده است. «بهم‌ریختن» را بزنید یا رنگ‌های مکعب خودتان را وارد کنید.</div>
+    <div id="choice">
+      <span class="label" style="margin:0">⚡ تصمیم مدل:</span>
+      <span id="choiceName">—</span>
+      <span id="choiceAlg"></span>
+      <span id="choiceP"></span>
+    </div>
+    <div class="bars" id="bars"></div>
+    <div class="tiles">
+      <div class="tile"><b id="tMoves">۰</b><span>حرکت</span></div>
+      <div class="tile"><b id="tSteps">۰</b><span>تصمیم مدل</span></div>
+      <div class="tile"><b id="tFix">۰</b><span>اصلاح توسط معلم</span></div>
+      <div class="tile"><b id="tSolved">۰/۰</b><span>مکعب‌های حل‌شده</span></div>
+      <div class="tile"><b id="tAvg">—</b><span>میانگین حرکت</span></div>
+      <div class="tile"><b id="tBest">—</b><span>بهترین حل</span></div>
+    </div>
+    <div class="controls">
+      <button class="primary" id="bPlay">▶ حل</button>
+      <button id="bStep">گام بعد</button>
+      <button id="bScramble">🔀 مکعب جدید</button>
+      <button id="bEdit">🎨 مکعب خودم</button>
+    </div>
+    <div class="controls">
+      <label class="speed">سرعت <input type="range" id="speed" min="1" max="10" value="6"></label>
+      <button id="bReset">بازنشانی</button>
+    </div>
+    <div id="msg"></div>
+  </section>
+
+  <section class="card" id="editor">
+    <div class="label">🎨 رنگ‌های مکعب واقعی خود را وارد کنید</div>
+    <div class="hint">مکعب را طوری بگیرید که مرکز <b>زرد بالا</b> و مرکز <b>سبز جلو</b> باشد (سفید پایین، نارنجی راست، قرمز چپ، آبی پشت).
+      یک رنگ انتخاب کنید و روی خانه‌ها بزنید. نقشه باز‌شده: بالا در ردیف اول، سپس چپ / جلو / راست / پشت، و پایین در ردیف آخر.
+      بالای هر وجه کناری رو به بالای مکعب است؛ بالای وجه «بالا» رو به پشت و بالای وجه «پایین» رو به جلو است.</div>
+    <div class="palette" id="palette"></div>
+    <div class="net" id="net"></div>
+    <div class="controls">
+      <button class="primary" id="bApply">✔ اعمال و حل</button>
+      <button id="bFillSolved">حالت حل‌شده</button>
+      <button id="bFromCube">کپی از مکعب فعلی</button>
+      <button id="bClose">بستن</button>
+    </div>
+    <div class="hint">بعد از اعمال، «گام بعد» را بزنید و همان حرکت را روی مکعب واقعی انجام دهید.
+      حرکت‌ها: U=بالا، D=پایین، F=جلو، B=پشت، R=راست، L=چپ؛ تنها = ساعتگرد (وقتی رو به همان وجه نگاه کنید)، ' = پادساعتگرد، 2 = دو بار.</div>
+  </section>
+
+  <section class="card">
+    <details>
+      <summary>چرخاندن دستی وجه‌ها</summary>
+      <div class="moves" id="moves"></div>
+    </details>
+    <details open style="margin-top:10px">
+      <summary>گزارش تصمیم‌ها</summary>
+      <div id="log"></div>
+    </details>
+  </section>
+</main>
+
+<script src="three.min.js"></script>
+<script src="cube.js"></script>
+<script src="policy.js"></script>
+<script src="model.js"></script>
+<script src="model_data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
